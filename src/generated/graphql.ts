@@ -326,7 +326,9 @@ export type ResolversParentTypes = {
   User: UserModel
 }
 
-export type LogDirectiveArgs = {}
+export type LogDirectiveArgs = {
+  message?: Maybe<Scalars['String']['input']>
+}
 
 export type LogDirectiveResolver<
   Result,

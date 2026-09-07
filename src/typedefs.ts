@@ -1,7 +1,9 @@
 import {gql} from 'graphql-tag'
 
 export default gql`
-  directive @log on FIELD_DEFINITION
+  # The transformer adds a "message" argument to each decorated field, so a
+  # client overrides it as a normal field arg: { feed(message: "...") { id } }
+  directive @log(message: String = "error message") on FIELD_DEFINITION
   enum Theme {
     DARK
     LIGHT
@@ -88,9 +90,9 @@ export default gql`
   type Query {
     me: User!
     posts: [Post]!
-    post(id: ID!): Post!
+    post(id: ID!): Post! @log(message: "fetching a post")
     userSettings: Settings!
-    feed: [Post]! @log
+    feed: [Post]! @log(message: "🚨 someone read the feed")
   }
 
   type Mutation {
