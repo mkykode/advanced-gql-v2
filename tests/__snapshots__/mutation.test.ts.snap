@@ -1,0 +1,12 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`mutation > feed 1`] = `
+{
+  "data": {
+    "createPost": {
+      "message": "hello",
+    },
+  },
+  "errors": undefined,
+}
+`;

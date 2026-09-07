@@ -1,5 +1,7 @@
-const gql = require('graphql-tag')
-const createTestServer = require('./helper')
+import {gql} from 'graphql-tag'
+import {describe, expect, test, vi} from 'vitest'
+import createTestServer from './helper.ts'
+
 const FEED = gql`
   {
     feed {
@@ -18,7 +20,15 @@ describe('queries', () => {
       user: {id: 1},
       models: {
         Post: {
-          findMany: jest.fn(() => [{id: 1, message: 'hello', createdAt: 12345839, likes: 20, views: 300}])
+          findMany: vi.fn(() => [
+            {
+              id: 1,
+              message: 'hello',
+              createdAt: 12345839,
+              likes: 20,
+              views: 300
+            }
+          ])
         }
       }
     })
