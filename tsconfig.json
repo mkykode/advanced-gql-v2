@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+
+    // Node runs .ts directly by stripping types — there is no build step, so
+    // tsc only ever type-checks. These three keep us inside what stripping
+    // can handle: no enums, no namespaces, no parameter properties.
+    "noEmit": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+
+    // imports name the real file on disk (./errors.ts), since that is what
+    // Node resolves at runtime
+    "allowImportingTsExtensions": true,
+
+    // migration is incremental: .js and .ts coexist, and .js is not checked yet
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
+  "exclude": ["node_modules"]
+}

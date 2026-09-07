@@ -1,0 +1,10 @@
+allowBuilds:
+  '@apollo/protobufjs': true
+  core-js: true
+  core-js-pure: true
+  es5-ext: true
+  fsevents: true
+  gatsby: true
+  gatsby-cli: true
+  gatsby-telemetry: true
+  nodemon: true
