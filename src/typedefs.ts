@@ -1,6 +1,7 @@
-const gql = require('graphql-tag')
+import {gql} from 'graphql-tag'
 
-module.exports = gql`
+export default gql`
+  directive @log on FIELD_DEFINITION
   enum Theme {
     DARK
     LIGHT
@@ -89,7 +90,7 @@ module.exports = gql`
     posts: [Post]!
     post(id: ID!): Post!
     userSettings: Settings!
-    feed: [Post]!
+    feed: [Post]! @log
   }
 
   type Mutation {
@@ -101,4 +102,11 @@ module.exports = gql`
     signin(input: SigninInput!): AuthUser!
   }
 
+  type Item {
+    task: String!
+  }
+
+  type Subscription {
+    newPost: Post!
+  }
 `
