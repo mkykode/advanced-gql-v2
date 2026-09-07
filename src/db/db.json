@@ -8,8 +8,42 @@
       "avatar": "http",
       "createdAt": 1571213104370,
       "id": "Z2hlvDmLOSRZGebC_Z_aA"
+    },
+    {
+      "email": "guest@guest.com",
+      "password": "password",
+      "role": "MEMBER",
+      "verified": true,
+      "avatar": "http",
+      "createdAt": 1571213204370,
+      "id": "K8mQxRt2LpVzNbW4_Y_cD"
     }
   ],
-  "posts": [],
+  "posts": [
+    {
+      "id": "post_1",
+      "message": "hello from 1",
+      "author": "Z2hlvDmLOSRZGebC_Z_aA",
+      "createdAt": 1571213304370,
+      "likes": 12,
+      "views": 340
+    },
+    {
+      "id": "post_2",
+      "message": "second post, same author",
+      "author": "Z2hlvDmLOSRZGebC_Z_aA",
+      "createdAt": 1571213404370,
+      "likes": 3,
+      "views": 87
+    },
+    {
+      "id": "post_3",
+      "message": "a post from the other user",
+      "author": "K8mQxRt2LpVzNbW4_Y_cD",
+      "createdAt": 1571213504370,
+      "likes": 45,
+      "views": 1290
+    }
+  ],
   "settings": []
 }
