@@ -33,6 +33,10 @@ const createModel = <T extends {id: string; createdAt: number}>(
   updateOne(filter: Partial<T>, update: Partial<T>) {
     const match = db.get<T>(table).find(filter).value()
 
+    // nothing matched — report the miss rather than reading .id off undefined,
+    // which surfaced as an opaque INTERNAL_SERVER_ERROR
+    if (!match) return undefined
+
     db.get<T>(table).find(filter).assign(update).write()
 
     return db

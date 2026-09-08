@@ -4,6 +4,11 @@ export default gql`
   # The transformer adds a "message" argument to each decorated field, so a
   # client overrides it as a normal field arg: { feed(message: "...") { id } }
   directive @log(message: String = "error message") on FIELD_DEFINITION
+  directive @formatDate(format: String = "dd MMM yyy") on FIELD_DEFINITION
+  # requires is optional: bare @auth means "any logged-in user".
+  # Roles are ranked GUEST < MEMBER < ADMIN, so requires: MEMBER admits ADMIN too.
+  directive @auth(requires: Role) on FIELD_DEFINITION
+
   enum Theme {
     DARK
     LIGHT
@@ -20,7 +25,7 @@ export default gql`
     email: String!
     avatar: String!
     verified: Boolean!
-    createdAt: String!
+    createdAt: String! @formatDate
     posts: [Post]!
     role: Role!
     settings: Settings!
@@ -35,7 +40,7 @@ export default gql`
     id: ID!
     message: String!
     author: User!
-    createdAt: String!
+    createdAt: String! @formatDate
     likes: Int!
     views: Int!
   }
@@ -88,18 +93,18 @@ export default gql`
   }
 
   type Query {
-    me: User!
-    posts: [Post]!
-    post(id: ID!): Post! @log(message: "fetching a post")
-    userSettings: Settings!
+    me: User! @auth(requires: MEMBER)
+    posts: [Post]! @auth(requires: MEMBER)
+    post(id: ID!): Post! @auth @log(message: "fetching a post")
+    userSettings: Settings! @auth(requires: MEMBER)
     feed: [Post]! @log(message: "🚨 someone read the feed")
   }
 
   type Mutation {
-    updateSettings(input: UpdateSettingsInput!): Settings!
-    createPost(input: NewPostInput!): Post!
-    updateMe(input: UpdateUserInput!): User
-    invite(input: InviteInput!): Invite!
+    updateSettings(input: UpdateSettingsInput!): Settings! @auth
+    createPost(input: NewPostInput!): Post! @auth(requires: MEMBER)
+    updateMe(input: UpdateUserInput!): User @auth(requires: MEMBER)
+    invite(input: InviteInput!): Invite! @auth(requires: ADMIN)
     signup(input: SignupInput!): AuthUser!
     signin(input: SigninInput!): AuthUser!
   }

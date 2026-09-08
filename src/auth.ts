@@ -1,9 +1,8 @@
-import type {GraphQLResolveInfo} from 'graphql'
 import {GraphQLError} from 'graphql'
 import jwt from 'jsonwebtoken'
 import {models} from './db/index.ts'
 import {ErrorCode} from './errors.ts'
-import type {AuthedContext, Context, Role, User} from './types.ts'
+import type {Context, User} from './types.ts'
 
 const secret = 'catpack'
 
@@ -28,53 +27,20 @@ export const getUserFromToken = (token: string | undefined): User | null => {
   }
 }
 
-/** Any resolver, parameterised by the context it requires. */
-type Resolver<TContext, TRoot = unknown, TArgs = any, TReturn = unknown> = (
-  root: TRoot,
-  args: TArgs,
-  context: TContext,
-  info: GraphQLResolveInfo
-) => TReturn
-
 /**
- * checks if the user is on the context object
- * continues to the next resolver if true
+ * Narrows context.user from `User | null` to `User`.
  *
- * Takes a resolver needing AuthedContext and returns one accepting the plain
- * Context — so the guarantee "user is non-null" is expressed in the types, not
- * just in the comment.
+ * Enforcement lives in the @auth schema directive, which throws before any
+ * decorated resolver runs. TypeScript cannot see that, so resolvers behind
+ * @auth call this to get a checked non-null user rather than asserting one.
+ * It throws the same error, so a field that forgets @auth still fails safely
+ * instead of dereferencing null.
  */
-export const authenticated =
-  <TRoot, TArgs, TReturn>(
-    next: Resolver<AuthedContext, TRoot, TArgs, TReturn>
-  ): Resolver<Context, TRoot, TArgs, TReturn> =>
-  (root, args, context, info) => {
-    const {user} = context
-    if (!user) {
-      throw new GraphQLError('not authorized', {
-        extensions: {code: ErrorCode.UNAUTHENTICATED}
-      })
-    }
-    return next(root, args, {...context, user}, info)
+export const requireUser = (context: Context): User => {
+  if (!context.user) {
+    throw new GraphQLError('not authenticated', {
+      extensions: {code: ErrorCode.UNAUTHENTICATED}
+    })
   }
-
-/**
- * checks if the user on the context has the specified role.
- * continues to the next resolver if true
- *
- * Requires AuthedContext on both sides: it reads user.role, so it must sit
- * *inside* authenticated(), never outside it.
- */
-export const authorized =
-  <TRoot, TArgs, TReturn>(
-    role: Role,
-    next: Resolver<AuthedContext, TRoot, TArgs, TReturn>
-  ): Resolver<AuthedContext, TRoot, TArgs, TReturn> =>
-  (root, args, context, info) => {
-    if (context.user.role !== role) {
-      throw new GraphQLError('not correct role', {
-        extensions: {code: ErrorCode.FORBIDDEN}
-      })
-    }
-    return next(root, args, context, info)
-  }
+  return context.user
+}

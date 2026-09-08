@@ -64,7 +64,8 @@ export interface Invite {
 export interface Model<T> {
   findOne(filter?: Partial<T>): T | undefined
   findMany(filter?: Partial<T>): T[]
-  updateOne(filter: Partial<T>, update: Partial<T>): T
+  /** undefined when the filter matched nothing */
+  updateOne(filter: Partial<T>, update: Partial<T>): T | undefined
   remove(filter: Partial<T>): unknown
   createOne(fields: Partial<T>): T
   createMany(toCreate: Partial<T> | Partial<T>[]): unknown
@@ -84,10 +85,3 @@ export interface Context {
   user: User | null
   createToken(user: Pick<User, 'id' | 'role'>): string
 }
-
-/**
- * A resolver whose `user` is guaranteed non-null.
- * `authenticated()` throws before calling the wrapped resolver, so anything
- * behind it can rely on this narrower context.
- */
-export type AuthedContext = Context & {user: User}

@@ -326,6 +326,28 @@ export type ResolversParentTypes = {
   User: UserModel
 }
 
+export type AuthDirectiveArgs = {
+  requires?: Maybe<Role>
+}
+
+export type AuthDirectiveResolver<
+  Result,
+  Parent,
+  ContextType = Context,
+  Args = AuthDirectiveArgs
+> = DirectiveResolverFn<Result, Parent, ContextType, Args>
+
+export type FormatDateDirectiveArgs = {
+  format?: Maybe<Scalars['String']['input']>
+}
+
+export type FormatDateDirectiveResolver<
+  Result,
+  Parent,
+  ContextType = Context,
+  Args = FormatDateDirectiveArgs
+> = DirectiveResolverFn<Result, Parent, ContextType, Args>
+
 export type LogDirectiveArgs = {
   message?: Maybe<Scalars['String']['input']>
 }
@@ -504,5 +526,7 @@ export type Resolvers<ContextType = Context> = {
 }
 
 export type DirectiveResolvers<ContextType = Context> = {
+  auth?: AuthDirectiveResolver<any, any, ContextType>
+  formatDate?: FormatDateDirectiveResolver<any, any, ContextType>
   log?: LogDirectiveResolver<any, any, ContextType>
 }

@@ -1,6 +1,6 @@
 import {GraphQLError} from 'graphql'
 import {PubSub} from 'graphql-subscriptions'
-import {authenticated, authorized} from './auth.ts'
+import {requireUser} from './auth.ts'
 import {ErrorCode} from './errors.ts'
 import type {
   MutationCreatePostArgs,
@@ -44,57 +44,69 @@ const orNotFound = <T>(value: T | undefined, what: string): T => {
  */
 const resolvers: Resolvers = {
   Query: {
-    me: authenticated((_, __, {user}) => {
-      return user
-    }),
-    posts: authenticated((_, __, {user, models}) => {
-      return models.Post.findMany({author: user.id})
-    }),
-    post: authenticated((_, {id}: QueryPostArgs, {user, models}) => {
-      return orNotFound(models.Post.findOne({id, author: user.id}), 'post')
-    }),
-    userSettings: authenticated((_, __, {user, models}) => {
-      return orNotFound(models.Settings.findOne({user: user.id}), 'settings')
-    }),
-    // public resolver
+    // access control lives in the schema now: these fields carry @auth, which
+    // throws before the resolver runs. requireUser() only re-narrows the type.
+    me(_, __, context) {
+      return requireUser(context)
+    },
+    posts(_, __, context) {
+      return context.models.Post.findMany({author: requireUser(context).id})
+    },
+    post(_, {id}: QueryPostArgs, context) {
+      const user = requireUser(context)
+      return orNotFound(
+        context.models.Post.findOne({id, author: user.id}),
+        'post'
+      )
+    },
+    userSettings(_, __, context) {
+      const user = requireUser(context)
+      return orNotFound(
+        context.models.Settings.findOne({user: user.id}),
+        'settings'
+      )
+    },
+    // public resolver — no @auth
     feed(_, __, {models}) {
       return models.Post.findMany()
     }
   },
   Mutation: {
-    updateSettings: authenticated(
-      (_, {input}: MutationUpdateSettingsArgs, {user, models}) => {
-        return models.Settings.updateOne(
+    updateSettings(_, {input}: MutationUpdateSettingsArgs, context) {
+      const user = requireUser(context)
+      return orNotFound(
+        context.models.Settings.updateOne(
           {user: user.id},
           input as Partial<Settings>
-        )
-      }
-    ),
-    createPost: authenticated(
-      (_, {input}: MutationCreatePostArgs, {user, models}) => {
-        const post = models.Post.createOne({...input, author: user.id})
-        pubsub.publish(NEW_POST, {newPost: post})
-        return post
-      }
-    ),
+        ),
+        'settings'
+      )
+    },
+    createPost(_, {input}: MutationCreatePostArgs, context) {
+      const user = requireUser(context)
+      const post = context.models.Post.createOne({...input, author: user.id})
+      pubsub.publish(NEW_POST, {newPost: post})
+      return post
+    },
 
-    updateMe: authenticated(
-      (_, {input}: MutationUpdateMeArgs, {user, models}) => {
-        return models.User.updateOne({id: user.id}, input as Partial<User>)
+    updateMe(_, {input}: MutationUpdateMeArgs, context) {
+      const user = requireUser(context)
+      return orNotFound(
+        context.models.User.updateOne({id: user.id}, input as Partial<User>),
+        'user'
+      )
+    },
+    // role check is declarative: @auth(requires: ADMIN) in the schema
+    invite(_, {input}: MutationInviteArgs, context) {
+      const user = requireUser(context)
+      // `from` stays a user id here; Invite.from below resolves it to a User
+      return {
+        from: user.id,
+        role: input.role,
+        createdAt: String(Date.now()),
+        email: input.email
       }
-    ),
-    // admin role
-    invite: authenticated(
-      authorized('ADMIN', (_, {input}: MutationInviteArgs, {user}) => {
-        // `from` stays a user id here; Invite.from below resolves it to a User
-        return {
-          from: user.id,
-          role: input.role,
-          createdAt: String(Date.now()),
-          email: input.email
-        }
-      })
-    ),
+    },
 
     signup(_, {input}: MutationSignupArgs, {models, createToken}) {
       const existing = models.User.findOne({email: input.email})
@@ -132,7 +144,7 @@ const resolvers: Resolvers = {
 
   User: {
     posts(root, _, {user, models}) {
-      // field resolvers are not wrapped by authenticated(), so user may be null
+      // field resolvers carry no @auth, so user may be null here
       if (!user || root.id !== user.id) {
         throw new GraphQLError('not authorized', {
           extensions: {code: ErrorCode.UNAUTHENTICATED}

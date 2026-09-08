@@ -11,7 +11,11 @@ import {useServer} from 'graphql-ws/use/ws'
 import {WebSocketServer} from 'ws'
 import {createToken, getUserFromToken} from './auth.ts'
 import {db, models} from './db/index.ts'
-import {logDirectiveTransformer} from './directives.ts'
+import {
+  authDirectiveTransformer,
+  formatDirectiveTransformer,
+  logDirectiveTransformer
+} from './directives.ts'
 import {graphiqlHtml} from './graphiql.ts'
 import resolvers from './resolvers.ts'
 import typeDefs from './typedefs.ts'
@@ -22,7 +26,15 @@ import typeDefs from './typedefs.ts'
 // Directives are applied here, as a transform over the finished schema. v4+
 // has no `schemaDirectives` option — the schema you hand to ApolloServer is
 // already the transformed one, so both transports get the behaviour.
-const schema = logDirectiveTransformer(
+//
+// Applied in array order: auth first (innermost at runtime), formatDate last
+// (outermost) so it formats the finished value.
+const schema = [
+  authDirectiveTransformer,
+  logDirectiveTransformer,
+  formatDirectiveTransformer
+].reduce(
+  (s, transform) => transform(s),
   makeExecutableSchema({typeDefs, resolvers})
 )
 
