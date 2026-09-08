@@ -6,7 +6,13 @@
 // finished schema and returns a *new* schema with wrapped resolvers.
 import {getDirective, MapperKind, mapSchema} from '@graphql-tools/utils'
 import type {GraphQLFieldConfig, GraphQLSchema} from 'graphql'
-import {defaultFieldResolver, GraphQLError, GraphQLString} from 'graphql'
+import {
+  defaultFieldResolver,
+  getDirectiveValues,
+  getNamedType,
+  GraphQLError,
+  GraphQLString
+} from 'graphql'
 import {ErrorCode} from './errors.ts'
 import type {Context, Role} from './types.ts'
 import {formatDate} from './utils.ts'
@@ -95,6 +101,72 @@ export const authDirectiveTransformer = (
       }
     }
   })
+interface TruncateDirectiveArgs {
+  length: number
+  ellipsis?: string
+}
+
+/**
+ * @truncate(length: Int!, ellipsis: String) — an EXECUTABLE directive.
+ *
+ * Unlike the others in this file, the client writes this one in the query:
+ *   { feed { message @truncate(length: 10) } }
+ *
+ * That changes where it is read. mapSchema runs once at startup and only sees
+ * the schema, so it cannot know which fields a client will decorate. The
+ * directive has to be read per request, from `info`:
+ *
+ *   getDirective(schema, fieldConfig, name)      // FIELD_DEFINITION, build time
+ *   getDirectiveValues(def, node, variables)     // FIELD, request time
+ *
+ * Two consequences worth knowing:
+ *
+ * 1. Every candidate field must be wrapped, because the decision is the
+ *    client's. We narrow the cost by only wrapping fields that resolve to a
+ *    String — nothing else can be truncated.
+ * 2. info.fieldNodes is an array. The same schema field can appear several
+ *    times in one query via aliases or fragments, each with its own
+ *    directives, so the matching node is not always [0].
+ */
+export const truncateDirectiveTransformer = (
+  schema: GraphQLSchema,
+  directiveName = 'truncate'
+): GraphQLSchema =>
+  mapSchema(schema, {
+    [MapperKind.OBJECT_FIELD]: (
+      fieldConfig: GraphQLFieldConfig<unknown, unknown>
+    ) => {
+      // only String fields can be truncated — skip the rest rather than
+      // wrapping every field in the schema
+      if (getNamedType(fieldConfig.type) !== GraphQLString) return undefined
+
+      const {resolve = defaultFieldResolver} = fieldConfig
+
+      return {
+        ...fieldConfig,
+        async resolve(source, args, context, info) {
+          const value = await resolve(source, args, context, info)
+          if (typeof value !== 'string') return value
+
+          const def = info.schema.getDirective(directiveName)
+          if (!def) return value
+
+          // check every node this field appears as; the client may have
+          // decorated one alias and not another
+          const directive = info.fieldNodes
+            .map(node => getDirectiveValues(def, node, info.variableValues))
+            .find(Boolean) as TruncateDirectiveArgs | undefined
+
+          if (!directive) return value
+
+          const {length, ellipsis = ''} = directive
+          if (value.length <= length) return value
+          return value.slice(0, length) + ellipsis
+        }
+      }
+    }
+  })
+
 /**
  * @formatDate(format: String) — formats the date the field resolves to, and
  * adds a `format` ARGUMENT so a client can choose its own format per query.

@@ -14,7 +14,8 @@ import {db, models} from './db/index.ts'
 import {
   authDirectiveTransformer,
   formatDirectiveTransformer,
-  logDirectiveTransformer
+  logDirectiveTransformer,
+  truncateDirectiveTransformer
 } from './directives.ts'
 import {graphiqlHtml} from './graphiql.ts'
 import resolvers from './resolvers.ts'
@@ -32,7 +33,8 @@ import typeDefs from './typedefs.ts'
 const schema = [
   authDirectiveTransformer,
   logDirectiveTransformer,
-  formatDirectiveTransformer
+  formatDirectiveTransformer,
+  truncateDirectiveTransformer
 ].reduce(
   (s, transform) => transform(s),
   makeExecutableSchema({typeDefs, resolvers})

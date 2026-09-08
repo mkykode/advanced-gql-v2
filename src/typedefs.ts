@@ -9,6 +9,12 @@ export default gql`
   # Roles are ranked GUEST < MEMBER < ADMIN, so requires: MEMBER admits ADMIN too.
   directive @auth(requires: Role) on FIELD_DEFINITION
 
+  # An EXECUTABLE directive: the client writes it in the query, like @skip.
+  # Truncating text for display is genuinely the caller's decision, which is
+  # what makes FIELD the right location here.
+  #   { feed { message @truncate(length: 10) } }
+  directive @truncate(length: Int! = 20, ellipsis: String = "…") on FIELD
+
   enum Theme {
     DARK
     LIGHT
