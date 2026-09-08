@@ -4,6 +4,7 @@
 // The shape changed fundamentally: instead of a class the server instantiates
 // and calls visitFieldDefinition() on, you write a function that walks the
 // finished schema and returns a *new* schema with wrapped resolvers.
+import {maybeCacheControlFromInfo} from '@apollo/cache-control-types'
 import {getDirective, MapperKind, mapSchema} from '@graphql-tools/utils'
 import type {GraphQLFieldConfig, GraphQLSchema} from 'graphql'
 import {
@@ -93,6 +94,17 @@ export const authDirectiveTransformer = (
               }
             )
           }
+
+          // Anything behind @auth is per-user, so it must never land in a
+          // shared cache. @cacheControl has no idea @auth exists — a field
+          // carrying both would otherwise emit "public" and let a CDN serve
+          // one user's data to the next. Forcing the scope here means
+          // authentication implies private caching and cannot be forgotten.
+          //
+          // `maybe` rather than cacheControlFromInfo(): the latter throws if
+          // the cache control plugin has been disabled, and auth should not
+          // break because caching is switched off.
+          maybeCacheControlFromInfo(info)?.setCacheHint({scope: 'PRIVATE'})
 
           // must RETURN — a wrapper that calls the resolver but discards its
           // value resolves the field to undefined

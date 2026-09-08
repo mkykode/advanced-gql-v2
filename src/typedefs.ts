@@ -1,6 +1,15 @@
 import {gql} from 'graphql-tag'
 
 export default gql`
+  enum CacheControlScope {
+    PUBLIC
+    PRIVATE
+  }
+  directive @cacheControl(
+    maxAge: Int
+    scope: CacheControlScope
+    inheritMaxAge: Boolean
+  ) on FIELD_DEFINITION | OBJECT | INTERFACE | UNION
   # The transformer adds a "message" argument to each decorated field, so a
   # client overrides it as a normal field arg: { feed(message: "...") { id } }
   directive @log(message: String = "error message") on FIELD_DEFINITION
@@ -99,11 +108,13 @@ export default gql`
   }
 
   type Query {
-    me: User! @auth(requires: MEMBER)
+    me: User! @auth(requires: MEMBER) @cacheControl(maxAge: 60)
     posts: [Post]! @auth(requires: MEMBER)
     post(id: ID!): Post! @auth @log(message: "fetching a post")
     userSettings: Settings! @auth(requires: MEMBER)
-    feed: [Post]! @log(message: "🚨 someone read the feed")
+    feed: [Post]!
+      @cacheControl(maxAge: 60)
+      @log(message: "🚨 someone read the feed")
   }
 
   type Mutation {
