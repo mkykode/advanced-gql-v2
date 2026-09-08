@@ -66,6 +66,27 @@ const serverCleanup = useServer(
 // --- HTTP transport (queries + mutations) ---
 const server = new ApolloServer({
   schema,
+
+  // Automatic Persisted Queries. Already enabled by default with an in-memory
+  // cache — spelled out here so the setup is visible and the TTL is ours.
+  //
+  // The client sends sha256(query) instead of the query text. On a miss the
+  // server answers PersistedQueryNotFound, the client retries once with the
+  // full text to register it, and every request after that carries only the
+  // hash. Set `persistedQueries: false` to turn it off.
+  //
+  // The payoff is mostly in the URL: a GET carrying a full query blows past
+  // proxy and CDN length limits, while a hash fits comfortably — which is
+  // what makes CDN-cached GraphQL possible at all.
+  //
+  // The default cache is per-process, so hashes registered on one instance are
+  // unknown to another. That is safe (the client just re-registers) but wasteful
+  // behind a load balancer; pass a shared `cache` here to fix it.
+  persistedQueries: {
+    // seconds before a registered query is evicted; null means never expire
+    ttl: 900
+  },
+
   plugins: [
     // Drain in-flight HTTP requests on shutdown...
     ApolloServerPluginDrainHttpServer({httpServer}),
