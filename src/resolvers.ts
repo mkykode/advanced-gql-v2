@@ -163,19 +163,22 @@ const resolvers: Resolvers = {
   Settings: {
     // Settings.user is a User, not another Settings row — look it up by the
     // user id this settings row stores.
-    user(settings, _, {models}) {
-      return orNotFound(models.User.findOne({id: settings.user}), 'user')
+    async user(settings, _, {loaders}) {
+      return orNotFound(await loaders.user.load(settings.user), 'user')
     }
   },
   Post: {
-    author(post, _, {models}) {
-      return orNotFound(models.User.findOne({id: post.author}), 'author')
+    // The N+1 site: GraphQL calls this once per post, so a feed of 20 posts
+    // means 20 lookups. The loader collapses them into one batched read and
+    // de-duplicates repeated authors.
+    async author(post, _, {loaders}) {
+      return orNotFound(await loaders.user.load(post.author), 'author')
     }
   },
   Invite: {
     // `from` is stored as a user id; resolve it to the User the schema promises
-    from(invite, _, {models}) {
-      return orNotFound(models.User.findOne({id: invite.from}), 'user')
+    async from(invite, _, {loaders}) {
+      return orNotFound(await loaders.user.load(invite.from), 'user')
     }
   },
 

@@ -64,6 +64,16 @@ export interface Invite {
 export interface Model<T> {
   findOne(filter?: Partial<T>): T | undefined
   findMany(filter?: Partial<T>): T[]
+  /**
+   * Bulk lookup for DataLoader. Reads the table once and returns one entry per
+   * requested id, in the same order, with undefined for misses — which is the
+   * contract DataLoader's batch function requires.
+   *
+   * Without this the batch function would loop findOne() and we would batch the
+   * resolver calls without batching the storage calls, which is the shortcut
+   * that makes DataLoader pointless against a real database.
+   */
+  findManyByIds(ids: readonly string[]): (T | undefined)[]
   /** undefined when the filter matched nothing */
   updateOne(filter: Partial<T>, update: Partial<T>): T | undefined
   remove(filter: Partial<T>): unknown
@@ -77,11 +87,13 @@ export interface Models {
   Settings: Model<Settings>
 }
 
-/** Third argument to every resolver. Built in src/index.js per request. */
+/** Third argument to every resolver. Built in src/index.ts per request. */
 export interface Context {
   models: Models
   db: unknown
   /** null when the request carries no valid token */
   user: User | null
   createToken(user: Pick<User, 'id' | 'role'>): string
+  /** batched lookups, constructed fresh for every request */
+  loaders: import('./loaders.ts').Loaders
 }

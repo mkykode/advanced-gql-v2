@@ -18,6 +18,7 @@ import {
   truncateDirectiveTransformer
 } from './directives.ts'
 import {graphiqlHtml} from './graphiql.ts'
+import {createLoaders} from './loaders.ts'
 import resolvers from './resolvers.ts'
 import typeDefs from './typedefs.ts'
 
@@ -57,7 +58,9 @@ const serverCleanup = useServer(
       const raw = ctx.connectionParams?.authorization
       const token = typeof raw === 'string' ? raw : undefined
       const user = getUserFromToken(token)
-      return {db, models, user, createToken}
+      // fresh loaders per connection — see src/loaders.ts on why these must
+      // never be shared
+      return {db, models, user, createToken, loaders: createLoaders(models)}
     }
   },
   wsServer
@@ -114,7 +117,9 @@ app.use(
     async context({req}) {
       const token = req.headers.authorization
       const user = getUserFromToken(token)
-      return {db, models, user, createToken}
+      // fresh loaders per request — a module-level loader would leak one
+      // user's rows into the next request and never see a write
+      return {db, models, user, createToken, loaders: createLoaders(models)}
     }
   })
 )

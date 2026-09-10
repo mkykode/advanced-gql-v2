@@ -30,6 +30,15 @@ const createModel = <T extends {id: string; createdAt: number}>(
       .orderBy(['createdAt'], ['desc'])
       .value()
   },
+  findManyByIds(ids: readonly string[]) {
+    // one read of the table, then O(1) per id — not one read per id
+    const all = (db.get<T>(table).value() ?? []) as T[]
+    const byId = new Map(all.map(row => [row.id, row]))
+
+    // order and length must match `ids` exactly, or DataLoader hands the wrong
+    // row to the wrong caller
+    return ids.map(id => byId.get(id))
+  },
   updateOne(filter: Partial<T>, update: Partial<T>) {
     const match = db.get<T>(table).find(filter).value()
 
